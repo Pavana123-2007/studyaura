@@ -1,179 +1,132 @@
-import csv
 import os
+import csv
 
-DATA_FILE = os.path.join(os.path.dirname(__file__), "../data/tasks.csv")
+# -------------------------------------------------
+# PATHS
+# -------------------------------------------------
+BASE_PATH = os.path.dirname(os.path.dirname(__file__))
+DATA_FOLDER = os.path.join(BASE_PATH, "data")
 
-# -------------------------------------------
-# SAVE A NEW TASK
-# -------------------------------------------
-def save_task(task):
-    file_exists = os.path.isfile(DATA_FILE)
-    with open(DATA_FILE, mode="a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
+TASKS_FILE = os.path.join(DATA_FOLDER, "tasks.csv")
+PROGRESS_FILE = os.path.join(DATA_FOLDER, "progress.csv")
+SETTINGS_FILE = os.path.join(DATA_FOLDER, "settings.csv")
 
-        if not file_exists:
-            writer.writerow(["title", "subject", "deadline", "priority", "status"])
 
-        writer.writerow([
-            task["title"],
-            task["subject"],
-            task["deadline"],
-            task["priority"],
-            task["status"]
-        ])
+# -------------------------------------------------
+# ENSURE DATA FILES EXIST
+# -------------------------------------------------
+def ensure_files():
+    """Ensure data folder + CSVs exist with correct headers."""
 
-# -------------------------------------------
-# LOAD ALL TASKS
-# -------------------------------------------
+    if not os.path.exists(DATA_FOLDER):
+        os.makedirs(DATA_FOLDER)
+
+    if not os.path.exists(TASKS_FILE):
+        with open(TASKS_FILE, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["task", "subject", "deadline", "priority", "status"])
+
+    if not os.path.exists(PROGRESS_FILE):
+        with open(PROGRESS_FILE, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["task", "progress"])
+
+    if not os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["setting", "value"])
+
+
+ensure_files()
+
+
+# =====================================================
+# TASKS — LOAD & SAVE
+# =====================================================
 def load_tasks():
-    if not os.path.isfile(DATA_FILE):
-        return []
+    """Returns a list of tasks as dictionaries."""
+    ensure_files()
+    tasks = []
 
-    with open(DATA_FILE, mode="r", newline="", encoding="utf-8") as f:
+    with open(TASKS_FILE, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        return list(reader)
+        for row in reader:
+            tasks.append({
+                "task": row.get("task", ""),
+                "subject": row.get("subject", ""),
+                "deadline": row.get("deadline", ""),
+                "priority": row.get("priority", ""),
+                "status": row.get("status", "Pending")
+            })
 
-# -------------------------------------------
-# DELETE TASK by INDEX
-# -------------------------------------------
-def delete_task(index):
-    tasks = load_tasks()
-    if index < 0 or index >= len(tasks):
-        return
+    return tasks
 
-    tasks.pop(index)
 
-    with open(DATA_FILE, mode="w", newline="", encoding="utf-8") as f:
+def save_tasks(tasks):
+    """Writes list of task dictionaries back to tasks.csv."""
+    ensure_files()
+
+    with open(TASKS_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["title", "subject", "deadline", "priority", "status"])
+        writer.writerow(["task", "subject", "deadline", "priority", "status"])
+
         for t in tasks:
-            writer.writerow([t["title"], t["subject"], t["deadline"], t["priority"], t["status"]])
-
-# -------------------------------------------
-# UPDATE TASK STATUS
-# -------------------------------------------
-def update_task_status(index, new_status):
-    tasks = load_tasks()
-    if index < 0 or index >= len(tasks):
-        return
-
-    tasks[index]["status"] = new_status
-
-    with open(DATA_FILE, mode="w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["title", "subject", "deadline", "priority", "status"])
-        for t in tasks:
-            writer.writerow([t["title"], t["subject"], t["deadline"], t["priority"], t["status"]])
-def get_task_stats():
-    tasks = load_tasks()
-
-    total = len(tasks)
-    completed = sum(1 for t in tasks if t["status"] == "Completed")
-    pending = total - completed
-
-    # Subject-wise stats
-    subjects = {}
-    for t in tasks:
-        subject = t["subject"]
-        if subject not in subjects:
-            subjects[subject] = {"total": 0, "completed": 0}
-
-        subjects[subject]["total"] += 1
-        if t["status"] == "Completed":
-            subjects[subject]["completed"] += 1
-
-    return {
-        "total": total,
-        "completed": completed,
-        "pending": pending,
-        "subjects": subjects,
-    }
-from datetime import datetime, timedelta
+            writer.writerow([
+                t.get("task", ""),
+                t.get("subject", ""),
+                t.get("deadline", ""),
+                t.get("priority", ""),
+                t.get("status", "Pending")
+            ])
 
 
-def parse_deadline(date_str):
-    try:
-        return datetime.strptime(date_str, "%d-%m-%Y")
-    except:
-        return None
+# =====================================================
+# SETTINGS HANDLER
+# =====================================================
+def load_settings():
+    ensure_files()
+    settings = {}
 
-
-def get_deadline_groups():
-    tasks = load_tasks()
-    today = datetime.today().date()
-
-    overdue = []
-    due_today = []
-    due_tomorrow = []
-
-    for t in tasks:
-        dt = parse_deadline(t["deadline"])
-        if dt is None:
-            continue
-
-        d = dt.date()
-
-        if d < today:
-            overdue.append(t)
-        elif d == today:
-            due_today.append(t)
-        elif d == today.replace(day=today.day+1):
-            due_tomorrow.append(t)
-
-    return overdue, due_today, due_tomorrow
-# ========================================================
-# TIMETABLE STORAGE
-# ========================================================
-import csv
-import os
-
-TIMETABLE_FILE = os.path.join(os.path.dirname(__file__), "../data/timetable.csv")
-
-def save_session(session):
-    file_exists = os.path.isfile(TIMETABLE_FILE)
-
-    with open(TIMETABLE_FILE, mode="a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-
-        if not file_exists:
-            writer.writerow(["day", "subject", "start_time", "duration"])
-
-        writer.writerow([
-            session["day"],
-            session["subject"],
-            session["start_time"],
-            session["duration"]
-        ])
-
-def load_sessions():
-    if not os.path.isfile(TIMETABLE_FILE):
-        return []
-
-    with open(TIMETABLE_FILE, mode="r", newline="", encoding="utf-8") as f:
+    with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        return list(reader)
-def get_next_session():
-    sessions = load_sessions()
-    now = datetime.now()
-    today = now.strftime("%A")
+        for row in reader:
+            settings[row["setting"]] = row["value"]
 
-    closest = None
-    min_diff = timedelta(hours=24)
+    return settings
 
-    for s in sessions:
-        if s["day"] != today:
-            continue
-        
-        try:
-            t = datetime.strptime(s["start_time"], "%H:%M")
-            session_time = now.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
-            diff = session_time - now
 
-            if timedelta(0) < diff < min_diff:
-                min_diff = diff
-                closest = s
+def save_settings(settings: dict):
+    ensure_files()
 
-        except:
-            continue
+    with open(SETTINGS_FILE, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["setting", "value"])
 
-    return closest, min_diff
+        for key, val in settings.items():
+            writer.writerow([key, val])
+
+
+# =====================================================
+# PROGRESS HANDLER
+# =====================================================
+def load_progress():
+    ensure_files()
+    progress = {}
+
+    with open(PROGRESS_FILE, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            progress[row["task"]] = row["progress"]
+
+    return progress
+
+
+def save_progress(progress_dict: dict):
+    ensure_files()
+
+    with open(PROGRESS_FILE, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["task", "progress"])
+
+        for task, prog in progress_dict.items():
+            writer.writerow([task, prog])

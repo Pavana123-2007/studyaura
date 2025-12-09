@@ -1,420 +1,909 @@
-'''# ============================================================
-#  🌟 STUDYAURA — FINAL MAIN FILE (DAY 1 → DAY 9)
-# ============================================================
+'''# ================================================================
+#                       StudyAura — FINAL MAIN
+#            wxPython version (transparent title + hover icons)
+# ================================================================
 
-from tkinter import *
-from tkinter import ttk
-from PIL import Image, ImageTk
+import wx
 import os
-import threading
+from PIL import Image
 
-# Day-9 Reminder System Import
-from modules.reminder_system import reminder_loop  
+# Import animated icon class
+from icon_button import AnimatedIcon, load_pil_image, pil_to_wx_bitmap
+from modules.tasks_screen import TasksScreen
 
+# ---------------------------------------------------------
+# Paths
+# ---------------------------------------------------------
+BASE_PATH = os.path.dirname(__file__)
+ICON_FOLDER = os.path.join(BASE_PATH, "assets", "icons")
 
+ASSETS = {
+    "background": "background.png",
+    "Tasks": "tasks_icon.png",
+    "Timetable": "timetable_icon.png",
+    "Analytics": "analytics_icon.png",
+    "Reports": "reports_icon.png",
+    "Pomodoro": "pomodoro_icon.png",
+    "Settings": "settings_icon.png"
+}
 
-# ============================================================
-#  🔹 THEME COLORS
-# ============================================================
-TITLE_BG = "#7DD3FC"
-SIDEBAR_BG = "#DCE7FF"
-CONTENT_BG = "#FFFFFF"
-BUTTON_BG = "#AEC8FF"
-BUTTON_ACTIVE = "#8EB4FF"
-
-
-# ============================================================
-#  🔹 MAIN WINDOW SETUP
-# ============================================================
-root = Tk()
-root.title("🎓📚 StudyAura - Your Space for Smarter Learning")
-root.geometry("1550x800")
-root.state("zoomed")
-root.configure(bg="#E9E9E9")
-
-
-# ============================================================
-#  🔹 WELCOME FRAME
-# ============================================================
-welcome_frame = Frame(root, bg=TITLE_BG, highlightthickness=0)
-welcome_frame.pack(fill=BOTH, expand=True)
+DESIGN_W, DESIGN_H = 1550, 800
+ICON_SIZE = (150, 150)
 
 
 # ============================================================
-#  🔹 LOAD BACKGROUND IMAGE
+# TRANSPARENT TITLE OVERLAY
 # ============================================================
-base_path = os.path.dirname(__file__)
-img_path = os.path.join(base_path, "assets/icons/background.png")
-
-bg_image = Image.open(img_path)
-bg_resized = bg_image.resize((1550, 800), Image.LANCZOS)
-bg_photo = ImageTk.PhotoImage(bg_resized)
-
-bg_label = Label(welcome_frame, image=bg_photo)
-bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-bg_label.image = bg_photo
-bg_label.lower()
-
-
-# ============================================================
-#  🔹 WELCOME SCREEN TITLE
-# ============================================================
-title_frame = Frame(welcome_frame, bg=TITLE_BG)
-title_frame.place(x=40, y=80)
-
-shadow = Label(
-    title_frame,
-    text="🎓📚 StudyAura:\nTurn Plans\ninto Progress! 🧠💡",
-    font=("Segoe UI", 45, "bold"),
-    bg=TITLE_BG,
-    fg="#000000"
-)
-shadow.place(x=3, y=3)
-
-title = Label(
-    title_frame,
-    text="🎓📚 StudyAura:\nTurn Plans\ninto Progress! 🧠💡",
-    font=("Segoe UI", 45, "bold"),
-    bg=TITLE_BG,
-    fg="#000000"
-)
-title.pack()
-
-canvas = Canvas(welcome_frame, width=450, height=5, bg=TITLE_BG, highlightthickness=0)
-canvas.place(x=120, y=370)
-canvas.create_line(0, 2, 450, 2, fill="#2563EB", width=4)
-canvas.create_line(0, 2, 225, 2, fill="#A855F7", width=4)
-
-subtitle = Label(
-    welcome_frame,
-    text="📚 Plan Smart  |  💪 Stay Consistent  |  🚀 Achieve Excellence",
-    font=("Segoe UI", 18, "bold"),
-    bg=TITLE_BG,
-    fg="#000000"
-)
-subtitle.place(x=30, y=400)
-
-
-# ============================================================
-#  🔹 START BUTTON
-# ============================================================
-style = ttk.Style()
-style.configure("TButton", font=("Segoe UI", 14, "bold"), padding=10)
-
-start_btn = ttk.Button(
-    welcome_frame,
-    text="✨ Start Planning Now!",
-    style="TButton",
-    command=lambda: show_planner()
-)
-start_btn.place(x=220, y=500)
-
-footer = Label(
-    welcome_frame,
-    text="Designed with ❤️ by PyNova Team",
-    font=("Segoe UI", 14, "bold"),
-    bg=TITLE_BG,
-    fg="#01050E"
-)
-footer.pack(side=BOTTOM, pady=20)
-
-
-# ============================================================
-#  🔹 PLANNER SCREEN (SIDEBAR + CONTENT)
-# ============================================================
-def show_planner():
-    welcome_frame.pack_forget()
-
-    global sidebar_frame, content_frame
-
-    sidebar_frame = Frame(root, bg=SIDEBAR_BG, width=260)
-    sidebar_frame.pack(side=LEFT, fill=Y)
-
-    content_frame = Frame(root, bg=CONTENT_BG)
-    content_frame.pack(side=LEFT, fill=BOTH, expand=True)
-
-    create_sidebar_buttons()
-
-    # ⭐ Start the Day-9 Reminder Thread
-    threading.Thread(target=reminder_loop, args=(root,), daemon=True).start()
-
-    load_screen("dashboard")
-    
-
-
-
-# ============================================================
-#  🔹 SIDEBAR BUTTONS
-# ============================================================
-def create_sidebar_buttons():
-
-    def make_btn(text, screen):
-        return Button(
-            sidebar_frame,
-            text=text,
-            font=("Segoe UI", 14, "bold"),
-            bg=BUTTON_BG,
-            activebackground=BUTTON_ACTIVE,
-            bd=0,
-            pady=14,
-            command=lambda: load_screen(screen)
+class TitleCanvas(wx.Window):
+    def __init__(self, parent, pos=(0, 0), size=(900, 420)):
+        super().__init__(
+            parent, pos=pos, size=size,
+            style=wx.NO_FULL_REPAINT_ON_RESIZE | wx.TRANSPARENT_WINDOW
         )
 
-    for w in sidebar_frame.winfo_children():
-        w.destroy()
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+        self.Bind(wx.EVT_PAINT, self.on_paint)
+        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda e: None)
 
-    make_btn("📘 Dashboard", "dashboard").pack(fill=X, padx=12, pady=(20, 6))
-    make_btn("📝 Tasks", "tasks").pack(fill=X, padx=12, pady=6)
-    make_btn("📊 Progress", "progress").pack(fill=X, padx=12, pady=6)
-    make_btn("⚙ Settings", "settings").pack(fill=X, padx=12, pady=6)
-    make_btn("🗓 Timetable", "timetable").pack(fill=X, padx=12, pady=6)
+        self.alpha = 0.0
+        self.offset_y = 40
+        self.frame = 0
+        self.max_frames = 35
 
+        self.title_lines = ["     StudyAura:", "     Turn Plans", "   into Progress!"]
+        self.subtitle = (
+            "📘 Plan Smart   |   💪 Stay Consistent   |   🚀 Achieve Excellence"
+        )
 
-# ============================================================
-#  🔹 SCREEN LOADER
-# ============================================================
-def load_screen(screen_name):
-    for w in content_frame.winfo_children():
-        w.destroy()
+        self.title_font = wx.Font(
+            50, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD
+        )
+        self.sub_font = wx.Font(
+            15, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD
+        )
 
-    if screen_name == "dashboard":
-        from modules.dashboard_screen import load_screen as dash
-        dash(content_frame)
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.on_timer, self.timer)
 
-    elif screen_name == "tasks":
-        from modules.tasks_screen import load_screen as tasks
-        tasks(content_frame)
+    def start(self, delay=50):
+        wx.CallLater(delay, lambda: self.timer.Start(16))
 
-    elif screen_name == "progress":
-        from modules.progress_screen import load_screen as prog
-        prog(content_frame)
+    def on_timer(self, evt):
+        self.frame += 1
+        t = min(1.0, self.frame / self.max_frames)
+        ease = 1 - (1 - t) ** 3
 
-    elif screen_name == "settings":
-        from modules.settings_screen import load_screen as settings
-        settings(content_frame)
+        self.alpha = ease
+        self.offset_y = int(50 * (1 - ease))
+        self.Refresh(False)
 
-    elif screen_name == "timetable":
-        from modules.timetable_screen import load_screen as ts
-        ts(content_frame)
+        if t >= 1.0:
+            self.timer.Stop()
 
-    else:
-        Label(content_frame, text="Unknown screen", font=("Segoe UI", 18)).pack(pady=20)
+    def on_paint(self, evt):
+        pdc = wx.AutoBufferedPaintDC(self)
 
+        w, h = self.GetSize()
+        bmp = wx.Bitmap(w, h, 32)
+        mdc = wx.MemoryDC(bmp)
 
-# ============================================================
-#  🔹 START APP
-# ============================================================
-root.mainloop()'''
-'''
-modules/tasks_screen.py
-Colourful + Elegant Tasks Screen for StudyAura (Theme A - Pastel Rainbow)
+        mdc.SetBackground(wx.Brush(wx.Colour(0, 0, 0, 0)))
+        mdc.Clear()
 
-Usage:
-    from modules.tasks_screen import show_tasks
-    show_tasks(root)
+        gc = wx.GraphicsContext.Create(mdc)
+        col = wx.Colour(255, 255, 255, int(self.alpha * 255))
 
-Saves tasks to ../data/tasks.csv with header:
-id,title,subject,priority,due_date,notes,completed
-'''
-# ============================================================
-#  🌟 STUDYAURA — FINAL MAIN FILE (DAY 1 → Day-11) with animations
-# ============================================================
+        gc.SetFont(self.title_font, col)
 
-from tkinter import *
-from tkinter import ttk
-from PIL import Image, ImageTk
-import os
-import threading
+        x = 40
+        y = 10 + self.offset_y
+        lh = self.title_font.GetPixelSize().y + 6
 
-# Day-9 Reminder System Import (if present)
-try:
-    from modules.reminder_system import reminder_loop
-except Exception:
-    # If the reminder module isn't present yet, ignore gracefully
-    reminder_loop = None
+        for i, line in enumerate(self.title_lines):
+            gc.DrawText(line, x, y + i * lh)
 
-# NEW DASHBOARD IMPORT (IMPORTANT)
-from modules.dashboard_screen import show_dashboard
+        gc.SetFont(self.sub_font, col)
+        gc.DrawText(
+            self.subtitle,
+            x,
+            y + len(self.title_lines) * lh + 25
+        )
+
+        mdc.SelectObject(wx.NullBitmap)
+        pdc.DrawBitmap(bmp, 0, 0, True)
 
 
 # ============================================================
-#  🔹 THEME COLORS (WELCOME SCREEN)
+# MAIN APPLICATION FRAME
 # ============================================================
-TITLE_BG = "#7DD3FC"
-SIDEBAR_BG = "#DCE7FF"
-CONTENT_BG = "#FFFFFF"
-BUTTON_BG = "#AEC8FF"
-BUTTON_ACTIVE = "#8EB4FF"
+class MainFrame(wx.Frame):
+    def __init__(self):
+        super().__init__(
+            None,
+            title="StudyAura",
+            size=(DESIGN_W, DESIGN_H)
+        )
 
+        self.Centre()
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+        self.Bind(wx.EVT_PAINT, self.on_paint_frame)
 
-# ============================================================
-#  🔹 MAIN WINDOW SETUP
-# ============================================================
-root = Tk()
-root.title("🎓📚 StudyAura - Your Space for Smarter Learning")
-root.geometry("1550x800")
-# start maximized (safe cross-platform)
-try:
-    root.state("zoomed")
-except Exception:
-    pass
-root.configure(bg="#E9E9E9")
+        # ----------------------------------------------------
+        # Background
+        # ----------------------------------------------------
+        bg_path = os.path.join(ICON_FOLDER, ASSETS["background"])
+        pil_bg = load_pil_image(bg_path, fallback_size=(DESIGN_W, DESIGN_H))
+        pil_bg = pil_bg.resize((DESIGN_W, DESIGN_H), Image.LANCZOS)
+        self._bg_bitmap = pil_to_wx_bitmap(pil_bg)
 
+        # ----------------------------------------------------
+        # Title Overlay
+        # ----------------------------------------------------
+        self.title = TitleCanvas(self, pos=(0, 200), size=(690, 300))
+        self.title.Raise()
+        self.title.start()
 
-# ============================================================
-#  🔹 WELCOME FRAME
-# ============================================================
-welcome_frame = Frame(root, bg=TITLE_BG, highlightthickness=0)
-welcome_frame.pack(fill=BOTH, expand=True)
+        # ----------------------------------------------------
+        # Icons Row
+        # ----------------------------------------------------
+        names = ["Tasks", "Timetable", "Analytics",
+                 "Reports", "Pomodoro", "Settings"]
 
+        xpos = [50, 300, 560, 800, 1050, 1300]
+        ypos = 550
 
-# ============================================================
-#  🔹 LOAD BACKGROUND IMAGE
-# ============================================================
-base_path = os.path.dirname(__file__)
-img_path = os.path.join(base_path, "assets", "icons", "background.png")
+        self.icons = []
+        for i, name in enumerate(names):
+            icon_path = os.path.join(ICON_FOLDER, ASSETS[name])
+            pil_icon = load_pil_image(icon_path, fallback_size=ICON_SIZE)
 
-try:
-    bg_image = Image.open(img_path)
-    bg_resized = bg_image.resize((1550, 800), Image.LANCZOS)
-    bg_photo = ImageTk.PhotoImage(bg_resized)
+            widget = AnimatedIcon(
+                parent=self,
+                name=name,
+                pil_img=pil_icon,
+                base_size=ICON_SIZE,
+                frames=12,
+                pos=(xpos[i], ypos),
+                action=self.on_icon_click
+            )
+            widget.Raise()
+            self.icons.append(widget)
 
-    bg_label = Label(welcome_frame, image=bg_photo)
-    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-    bg_label.image = bg_photo
-    bg_label.lower()
-except Exception:
-    # If background image missing, keep solid TITLE_BG
-    pass
+        self.Show()
 
+    # ---------------------------------------------------------
+    # Paint background
+    # ---------------------------------------------------------
+    def on_paint_frame(self, evt):
+        dc = wx.AutoBufferedPaintDC(self)
+        dc.DrawBitmap(self._bg_bitmap, 0, 0, True)
 
-# ============================================================
-#  🔹 WELCOME SCREEN TITLE (unchanged visually)
-# ============================================================
-# We'll animate positions — initial y moved down then animated up
-title_frame = Frame(welcome_frame, bg=TITLE_BG)
-title_frame.place(x=40, y=160)  # animated to y=80
+    # ---------------------------------------------------------
+    # Icon click handler
+    # ---------------------------------------------------------
+    def on_icon_click(self, name):
+        if name == "Tasks":
+            self.switch_to_tasks()
+        else:
+            wx.MessageBox(f"You clicked: {name}", "StudyAura")
 
-shadow = Label(
-    title_frame,
-    text="🎓📚 StudyAura:\nTurn Plans\ninto Progress! 🧠💡",
-    font=("Segoe UI", 45, "bold"),
-    bg=TITLE_BG,
-    fg="#000000"
-)
-shadow.place(x=3, y=3)
-
-title = Label(
-    title_frame,
-    text="🎓📚 StudyAura:\nTurn Plans\ninto Progress! 🧠💡",
-    font=("Segoe UI", 45, "bold"),
-    bg=TITLE_BG,
-    fg="#000000"
-)
-title.pack()
-
-# Underline canvas (will slide up with animation)
-canvas = Canvas(welcome_frame, width=450, height=5, bg=TITLE_BG, highlightthickness=0)
-canvas.place(x=120, y=450)  # animated to y=370
-canvas.create_line(0, 2, 450, 2, fill="#2563EB", width=4)
-canvas.create_line(0, 2, 225, 2, fill="#A855F7", width=4)
-
-subtitle = Label(
-    welcome_frame,
-    text="📚 Plan Smart  |  💪 Stay Consistent  |  🚀 Achieve Excellence",
-    font=("Segoe UI", 18, "bold"),
-    bg=TITLE_BG,
-    fg="#000000"
-)
-subtitle.place(x=30, y=480)  # animated to y=400
-
-
-# ============================================================
-#  🔹 ANIMATIONS (Balanced: smooth + responsive)
-# ============================================================
-
-def animate_welcome():
-    """Balanced slide animations for title, line and subtitle."""
-    frames = 25
-    start_y_title = 160
-    end_y_title = 80
-    start_y_line = 450
-    end_y_line = 370
-    start_y_sub = 480
-    end_y_sub = 400
-
-    dy_title = (end_y_title - start_y_title) / frames
-    dy_line = (end_y_line - start_y_line) / frames
-    dy_sub = (end_y_sub - start_y_sub) / frames
-
-    def step(i=0):
-        if i > frames:
-            # Ensure final positions set
-            title_frame.place_configure(y=end_y_title)
-            canvas.place_configure(y=end_y_line)
-            subtitle.place_configure(y=end_y_sub)
+    # ---------------------------------------------------------
+    # Sidebar navigation handler
+    # ---------------------------------------------------------
+    def on_sidebar_nav(self, label):
+        if label == "Home":
+            self.switch_to_home()
             return
 
-        title_frame.place_configure(y=int(start_y_title + dy_title * i))
-        canvas.place_configure(y=int(start_y_line + dy_line * i))
-        subtitle.place_configure(y=int(start_y_sub + dy_sub * i))
-        root.after(16, lambda: step(i + 1))
+        if label == "Tasks":
+            self.switch_to_tasks()
+            return
 
-    # short delay then animate
-    root.after(180, step)
+        wx.MessageBox(f"You clicked: {label}", "Navigation")
 
+    # ---------------------------------------------------------
+    # Switch to TASKS screen
+    # ---------------------------------------------------------
+    def switch_to_tasks(self):
+        self.title.Hide()
+        for icon in self.icons:
+            icon.Hide()
 
-# run animation once on start
-root.after(200, animate_welcome)
+        self.tasks_screen = TasksScreen(
+            parent=self,
+            nav_callback=self.on_sidebar_nav,      # FIXED
+            back_callback=self.switch_to_home      # FIXED
+        )
 
+        self.tasks_screen.SetPosition((0, 0))
+        self.tasks_screen.SetSize((DESIGN_W, DESIGN_H))
+        self.tasks_screen.Show()
 
-# ============================================================
-#  🔹 START BUTTON (unchanged look, now calls show_planner)
-# ============================================================
-style = ttk.Style()
-style.configure("TButton", font=("Segoe UI", 14, "bold"), padding=10)
+    # ---------------------------------------------------------
+    # Switch back to HOME screen
+    # ---------------------------------------------------------
+    def switch_to_home(self):
+        # destroy task screen if it exists
+        if hasattr(self, "tasks_screen"):
+            self.tasks_screen.Hide()
+            self.tasks_screen.Destroy()
 
-start_btn = ttk.Button(
-    welcome_frame,
-    text="✨ Start Planning Now!",
-    style="TButton",
-    command=lambda: show_planner()
-)
-start_btn.place(x=220, y=500)
+        self.title.Show()
+        for icon in self.icons:
+            icon.Show()
 
-
-footer = Label(
-    welcome_frame,
-    text="Designed with ❤️ by PyNova Team",
-    font=("Segoe UI", 14, "bold"),
-    bg=TITLE_BG,
-    fg="#01050E"
-)
-footer.pack(side=BOTTOM, pady=20)
-
-
-# ============================================================
-#  🔹 NAVIGATION: show_planner (destroys welcome and opens dashboard)
-# ============================================================
-def show_planner():
-    """Clear the window and open the animated Dashboard."""
-    # Stop any reminder loop thread if running gracefully (non-blocking)
-    try:
-        if reminder_loop:
-            pass
-    except Exception:
-        pass
-
-    # Clear root widgets
-    for widget in root.winfo_children():
-        widget.destroy()
-
-    # Call the dashboard loader
-    show_dashboard(root)
+        self.Refresh()
 
 
 # ============================================================
-#  🔹 MAINLOOP
+# ENTRY POINT
 # ============================================================
 if __name__ == "__main__":
-    root.mainloop()
+    app = wx.App(False)
+    frame = MainFrame()
+    app.MainLoop()
+'''
+'''# ================================================================
+#                       StudyAura — FINAL MAIN
+#            wxPython version (transparent title + hover icons)
+# ================================================================
+
+import wx
+import os
+from PIL import Image
+
+from icon_button import AnimatedIcon, load_pil_image, pil_to_wx_bitmap
+from modules.tasks_screen import TasksScreen
+from modules.screen_home import HomeScreen
+from modules.screen_subject_progress import SubjectProgressScreen
+from modules.screen_daily_progress import DailyProgressScreen
+from modules.screen_heatmap import StudyHeatmapScreen
+from modules.screen_tasks_completed import TasksCompletedScreen
+from modules.screen_streak import StudyStreakScreen
+
+
+
+BASE_PATH = os.path.dirname(__file__)
+ICON_FOLDER = os.path.join(BASE_PATH, "assets", "icons")
+
+ASSETS = {
+    "background": "background.png",
+    "Tasks": "tasks_icon.png",
+    "Timetable": "timetable_icon.png",
+    "Analytics": "analytics_icon.png",
+    "Reports": "reports_icon.png",
+    "Pomodoro": "pomodoro_icon.png"
+    # Removed: "Settings": "settings_icon.png"
+}
+
+DESIGN_W, DESIGN_H = 1550, 800
+ICON_SIZE = (150, 150)
+
+
+# ============================================================
+# TRANSPARENT TITLE OVERLAY
+# ============================================================
+class TitleCanvas(wx.Window):
+    def __init__(self, parent, pos=(0, 0), size=(900, 420)):
+        super().__init__(
+            parent, pos=pos, size=size,
+            style=wx.NO_FULL_REPAINT_ON_RESIZE | wx.TRANSPARENT_WINDOW
+        )
+
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+        self.Bind(wx.EVT_PAINT, self.on_paint)
+        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda e: None)
+
+        self.alpha = 0.0
+        self.offset_y = 40
+        self.frame = 0
+        self.max_frames = 35
+
+        self.title_lines = ["     StudyAura:", "     Turn Plans", "   into Progress!"]
+        self.subtitle = (
+            "📘 Plan Smart   |   💪 Stay Consistent   |   🚀 Achieve Excellence"
+        )
+
+        self.title_font = wx.Font(
+            50, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD
+        )
+        self.sub_font = wx.Font(
+            15, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD
+        )
+
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.on_timer, self.timer)
+
+    def start(self, delay=50):
+        wx.CallLater(delay, lambda: self.timer.Start(16))
+
+    def on_timer(self, evt):
+        self.frame += 1
+        t = min(1.0, self.frame / self.max_frames)
+        ease = 1 - (1 - t) ** 3
+
+        self.alpha = ease
+        self.offset_y = int(50 * (1 - ease))
+        self.Refresh(False)
+
+        if t >= 1.0:
+            self.timer.Stop()
+
+    def on_paint(self, evt):
+        pdc = wx.AutoBufferedPaintDC(self)
+
+        w, h = self.GetSize()
+        bmp = wx.Bitmap(w, h, 32)
+        mdc = wx.MemoryDC(bmp)
+
+        mdc.SetBackground(wx.Brush(wx.Colour(0, 0, 0, 0)))
+        mdc.Clear()
+
+        gc = wx.GraphicsContext.Create(mdc)
+        col = wx.Colour(255, 255, 255, int(self.alpha * 255))
+
+        gc.SetFont(self.title_font, col)
+
+        x = 40
+        y = 10 + self.offset_y
+        lh = self.title_font.GetPixelSize().y + 6
+
+        for i, line in enumerate(self.title_lines):
+            gc.DrawText(line, x, y + i * lh)
+
+        gc.SetFont(self.sub_font, col)
+        gc.DrawText(
+            self.subtitle,
+            x,
+            y + len(self.title_lines) * lh + 25
+        )
+
+        mdc.SelectObject(wx.NullBitmap)
+        pdc.DrawBitmap(bmp, 0, 0, True)
+
+
+# ============================================================
+# MAIN APPLICATION FRAME
+# ============================================================
+class MainFrame(wx.Frame):
+    def __init__(self):
+        super().__init__(
+            None,
+            title="StudyAura",
+            size=(DESIGN_W, DESIGN_H)
+        )
+
+        self.Centre()
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+        self.Bind(wx.EVT_PAINT, self.on_paint_frame)
+
+        # Load background
+        bg_path = os.path.join(ICON_FOLDER, ASSETS["background"])
+        pil_bg = load_pil_image(bg_path, fallback_size=(DESIGN_W, DESIGN_H))
+        pil_bg = pil_bg.resize((DESIGN_W, DESIGN_H), Image.LANCZOS)
+        self._bg_bitmap = pil_to_wx_bitmap(pil_bg)
+
+        # Title
+        self.title = TitleCanvas(self, pos=(0, 200), size=(690, 300))
+        self.title.Raise()
+        self.title.start()
+
+        # ----------------------------------------------------
+        # Icons Row (Settings REMOVED)
+        # ----------------------------------------------------
+        names = ["Tasks", "Timetable", "Analytics",
+                 "Reports", "Pomodoro"]
+
+        xpos = [80, 380, 700, 1000, 1300]  # shifted slightly for spacing
+        ypos = 550
+
+        self.icons = []
+        for i, name in enumerate(names):
+            icon_path = os.path.join(ICON_FOLDER, ASSETS[name])
+            pil_icon = load_pil_image(icon_path, fallback_size=ICON_SIZE)
+
+            widget = AnimatedIcon(
+                parent=self,
+                name=name,
+                pil_img=pil_icon,
+                base_size=ICON_SIZE,
+                frames=12,
+                pos=(xpos[i], ypos),
+                action=self.on_icon_click
+            )
+            widget.Raise()
+            self.icons.append(widget)
+
+        self.Show()
+
+    def on_paint_frame(self, evt):
+        dc = wx.AutoBufferedPaintDC(self)
+        dc.DrawBitmap(self._bg_bitmap, 0, 0, True)
+
+    def on_icon_click(self, name):
+        if name == "Tasks":
+            self.switch_to_tasks()
+        else:
+            wx.MessageBox(f"You clicked: {name}", "StudyAura")
+
+    # ---------------------------------------------------------
+    # Navigation
+    # ---------------------------------------------------------
+    ''''''def on_sidebar_nav(self, label):
+        if label == "Home":
+            self.switch_to_home()
+            return
+
+        if label == "Tasks":
+            self.switch_to_tasks()
+            return''''''
+    def on_sidebar_nav(self, label):
+
+        # HOME
+        if label == "Home":
+            self.switch_to_home()
+            return
+
+        # TASKS
+        if label == "Tasks":
+            self.switch_to_tasks()
+            return
+        if label == "Today":
+            self.switch_to_today()
+            return
+
+
+        # TEMPORARY NAVIGATION FOR OTHER BUTTONS
+        if label in [
+            "Today", "Upcoming", "Schedule", "Notes",
+            "Assignments", "Exams", "Projects", "Resources"
+        ]:
+            wx.MessageBox(f"{label} screen coming soon!", "StudyAura")
+            return
+
+        wx.MessageBox(f"You clicked: {label}", "Navigation")
+
+
+
+    def switch_to_tasks(self):
+        self.title.Hide()
+        for icon in self.icons:
+            icon.Hide()
+
+        self.tasks_screen = TasksScreen(
+            parent=self,
+            nav_callback=self.on_sidebar_nav,
+            back_callback=self.switch_to_home
+        )
+
+        self.tasks_screen.SetPosition((0, 0))
+        self.tasks_screen.SetSize((DESIGN_W, DESIGN_H))
+        self.tasks_screen.Show()
+    def switch_to_today(self):
+        # Hide home screen
+        self.title.Hide()
+        for icon in self.icons:
+            icon.Hide()
+
+        # Destroy tasks screen if open
+        if hasattr(self, "tasks_screen"):
+            try:
+                self.tasks_screen.Hide()
+                self.tasks_screen.Destroy()
+            except:
+                pass
+
+        
+
+
+    def switch_to_home(self):
+        if hasattr(self, "tasks_screen"):
+            self.tasks_screen.Hide()
+            self.tasks_screen.Destroy()
+
+        self.title.Show()
+        for icon in self.icons:
+            icon.Show()
+
+        self.Refresh()
+        def switch_to_home(self):
+            self.show_screen(HomeScreen)
+
+        def switch_to_subject_progress(self):
+            self.show_screen(SubjectProgressScreen)
+
+        def switch_to_daily_progress(self):
+            self.show_screen(DailyProgressScreen)
+
+        def switch_to_heatmap(self):
+            self.show_screen(StudyHeatmapScreen)
+
+        def switch_to_tasks_completed(self):
+            self.show_screen(TasksCompletedScreen)
+
+        def switch_to_streak(self):
+            self.show_screen(StudyStreakScreen)
+        def show_screen(self, screen_class):
+            # Hide home UI
+            self.title.Hide()
+            for icon in self.icons:
+                icon.Hide()
+
+            # Destroy old screen if exists
+            if hasattr(self, "current_screen") and self.current_screen:
+                self.current_screen.Hide()
+                self.current_screen.Destroy()
+
+            # Create new screen
+            self.current_screen = screen_class(
+                parent=self,
+                nav_callback=self.on_sidebar_nav,
+                back_callback=self.switch_to_home
+            )
+
+            self.current_screen.SetPosition((0, 0))
+            self.current_screen.SetSize((DESIGN_W, DESIGN_H))
+            self.current_screen.Show()
+
+
+
+
+# ============================================================
+# ENTRY POINT
+# ============================================================
+if __name__ == "__main__":
+    app = wx.App(False)
+    frame = MainFrame()
+    app.MainLoop()
+'''
+# ================================================================
+#                       StudyAura — FINAL MAIN (robust imports)
+#            wxPython version (transparent title + hover icons)
+# ================================================================
+
+import wx
+import os
+from PIL import Image
+
+from icon_button import AnimatedIcon, load_pil_image, pil_to_wx_bitmap
+
+# TasksScreen is required (you have it). If it's missing, we'll let the exception bubble.
+from modules.tasks_screen import TasksScreen
+
+# Try to import the other screens; if import fails create a lightweight placeholder class
+def _make_placeholder(name):
+    class Placeholder(wx.Panel):
+        def __init__(self, parent, nav_callback=None, back_callback=None):
+            super().__init__(parent)
+            self.SetBackgroundColour(wx.Colour(20, 24, 30))
+            s = wx.BoxSizer(wx.VERTICAL)
+            lbl = wx.StaticText(self, label=f"{name}\n\n(Placeholder — module missing or class name changed)")
+            lbl.SetFont(wx.Font(14, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+            lbl.SetForegroundColour(wx.Colour(220, 220, 220))
+            s.AddStretchSpacer(1)
+            s.Add(lbl, 0, wx.ALIGN_CENTER)
+            s.AddStretchSpacer(1)
+
+            # small back button for convenience
+            back = wx.Button(self, label="Back to Home")
+            back.Bind(wx.EVT_BUTTON, lambda e: back_callback() if back_callback else None)
+            s.Add(back, 0, wx.ALIGN_CENTER | wx.TOP, 10)
+
+            self.SetSizer(s)
+
+    return Placeholder
+
+# Safe imports with placeholders fallback
+try:
+    from modules.screen_home import HomeScreen
+except Exception as e:
+    print("Import warning: HomeScreen import failed:", e)
+    HomeScreen = _make_placeholder("HomeScreen")
+
+try:
+    from modules.screen_subject_progress import SubjectProgressScreen
+except Exception as e:
+    print("Import warning: SubjectProgressScreen import failed:", e)
+    SubjectProgressScreen = _make_placeholder("SubjectProgressScreen")
+
+try:
+    from modules.screen_daily_progress import DailyProgressScreen
+except Exception as e:
+    print("Import warning: DailyProgressScreen import failed:", e)
+    DailyProgressScreen = _make_placeholder("DailyProgressScreen")
+
+try:
+    from modules.screen_heatmap import StudyHeatmapScreen
+except Exception as e:
+    print("Import warning: StudyHeatmapScreen import failed:", e)
+    StudyHeatmapScreen = _make_placeholder("StudyHeatmapScreen")
+
+try:
+    from modules.screen_journey_map import JourneyMapScreen
+except Exception as e:
+    print("Import warning: TasksCompletedScreen import failed:", e)
+    JourneyMapScreen = _make_placeholder("TasksCompletedScreen")
+
+try:
+    from modules.screen_streak import StudyStreakScreen
+except Exception as e:
+    print("Import warning: StudyStreakScreen import failed:", e)
+    StudyStreakScreen = _make_placeholder("StudyStreakScreen")
+
+
+BASE_PATH = os.path.dirname(__file__)
+ICON_FOLDER = os.path.join(BASE_PATH, "assets", "icons")
+
+ASSETS = {
+    "background": "background.png",
+    "Tasks": "tasks_icon.png",
+    "To-do List": "todolist_icon.png",
+    "Analytics": "analytics_icon.png",
+    "Notes": "notes_icon.png",          # UPDATED ✔
+    "Pomodoro": "pomodoro_icon.png"
+}
+
+DESIGN_W, DESIGN_H = 1550, 800
+ICON_SIZE = (150, 150)
+
+
+# ============================================================
+# TRANSPARENT TITLE OVERLAY
+# ============================================================
+class TitleCanvas(wx.Window):
+    def __init__(self, parent, pos=(0, 0), size=(900, 420)):
+        super().__init__(
+            parent, pos=pos, size=size,
+            style=wx.NO_FULL_REPAINT_ON_RESIZE | wx.TRANSPARENT_WINDOW
+        )
+
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+        self.Bind(wx.EVT_PAINT, self.on_paint)
+        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda e: None)
+
+        self.alpha = 0.0
+        self.offset_y = 40
+        self.frame = 0
+        self.max_frames = 35
+
+        self.title_lines = ["     StudyAura:", "     Turn Plans", "   into Progress!"]
+        self.subtitle = (
+            "📘 Plan Smart   |   💪 Stay Consistent   |   🚀 Achieve Excellence"
+        )
+
+        self.title_font = wx.Font(
+            50, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD
+        )
+        self.sub_font = wx.Font(
+            15, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD
+        )
+
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.on_timer, self.timer)
+
+    def start(self, delay=50):
+        wx.CallLater(delay, lambda: self.timer.Start(16))
+
+    def on_timer(self, evt):
+        self.frame += 1
+        t = min(1.0, self.frame / self.max_frames)
+        ease = 1 - (1 - t) ** 3
+
+        self.alpha = ease
+        self.offset_y = int(50 * (1 - ease))
+        self.Refresh(False)
+
+        if t >= 1.0:
+            self.timer.Stop()
+
+    def on_paint(self, evt):
+        pdc = wx.AutoBufferedPaintDC(self)
+
+        w, h = self.GetSize()
+        bmp = wx.Bitmap(w, h, 32)
+        mdc = wx.MemoryDC(bmp)
+
+        mdc.SetBackground(wx.Brush(wx.Colour(0, 0, 0, 0)))
+        mdc.Clear()
+
+        gc = wx.GraphicsContext.Create(mdc)
+        col = wx.Colour(255, 255, 255, int(self.alpha * 255))
+
+        gc.SetFont(self.title_font, col)
+
+        x = 40
+        y = 10 + self.offset_y
+        lh = self.title_font.GetPixelSize().y + 6
+
+        for i, line in enumerate(self.title_lines):
+            gc.DrawText(line, x, y + i * lh)
+
+        gc.SetFont(self.sub_font, col)
+        gc.DrawText(
+            self.subtitle,
+            x,
+            y + len(self.title_lines) * lh + 25
+        )
+
+        mdc.SelectObject(wx.NullBitmap)
+        pdc.DrawBitmap(bmp, 0, 0, True)
+
+
+# ============================================================
+# MAIN APPLICATION FRAME
+# ============================================================
+class MainFrame(wx.Frame):
+    def __init__(self):
+        super().__init__(
+            None,
+            title="StudyAura",
+            size=(DESIGN_W, DESIGN_H)
+        )
+
+        self.Centre()
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+        self.Bind(wx.EVT_PAINT, self.on_paint_frame)
+
+        # Load background (safe fallback)
+        bg_path = os.path.join(ICON_FOLDER, ASSETS.get("background", "background.png"))
+        pil_bg = load_pil_image(bg_path, fallback_size=(DESIGN_W, DESIGN_H))
+        pil_bg = pil_bg.resize((DESIGN_W, DESIGN_H), Image.LANCZOS)
+        self._bg_bitmap = pil_to_wx_bitmap(pil_bg)
+
+        # Title overlay (home)
+        self.title = TitleCanvas(self, pos=(0, 200), size=(690, 300))
+        self.title.Raise()
+        self.title.start()
+
+        # Icons Row
+        names = ["Tasks", "To-do List", "Analytics", "Notes", "Pomodoro"]   # UPDATED ✔
+        xpos = [80, 380, 700, 1000, 1300]
+        ypos = 550
+
+        self.icons = []
+        for i, name in enumerate(names):
+            icon_path = os.path.join(ICON_FOLDER, ASSETS.get(name, ""))
+            pil_icon = load_pil_image(icon_path, fallback_size=ICON_SIZE)
+
+            widget = AnimatedIcon(
+                parent=self,
+                name=name,
+                pil_img=pil_icon,
+                base_size=ICON_SIZE,
+                frames=12,
+                pos=(xpos[i], ypos),
+                action=self.on_icon_click
+            )
+            widget.Raise()
+            self.icons.append(widget)
+
+        # container for currently displayed screen (other than home)
+        self.current_screen = None
+
+        self.Show()
+
+    def on_paint_frame(self, evt):
+        dc = wx.AutoBufferedPaintDC(self)
+        dc.DrawBitmap(self._bg_bitmap, 0, 0, True)
+
+    def on_icon_click(self, name):
+        if name == "Tasks":
+            self.show_screen(TasksScreen)
+
+        elif name == "Notes":   # ADDED ✔
+            wx.MessageBox("Notes Clicked!", "StudyAura")
+
+        else:
+            wx.MessageBox(f"You clicked: {name}", "StudyAura")
+
+    # ---------------------------------------------------------
+    # Navigation callback from child screens (sidebar etc.)
+    # ---------------------------------------------------------
+    def on_sidebar_nav(self, label):
+
+        if label == "Home":
+            self.switch_to_home()
+            return
+
+        if label == "Tasks":
+            self.show_screen(TasksScreen)
+            return
+
+        if label in ["Subject Progress", "SubjectProgress", "Subjects"]:
+            self.show_screen(SubjectProgressScreen)
+            return
+
+        if label in ["Study Heatmap", "Heatmap"]:
+            self.show_screen(StudyHeatmapScreen)
+            return
+
+        if label in ["Daily Progress", "DailyProgress", "Today"]:
+            self.show_screen(DailyProgressScreen)
+            return
+
+        if label in ["Tasks Completed", "TasksCompleted", "Completed"]:
+            self.show_screen(JourneyMapScreen)
+            return
+
+        if label in ["Study Streak", "Streak"]:
+            self.show_screen(StudyStreakScreen)
+            return
+
+        wx.MessageBox(f"You clicked: {label}", "Navigation")
+
+    # ---------------------------------------------------------
+    # Screen management helpers
+    # ---------------------------------------------------------
+    def _destroy_current_screen(self):
+        if hasattr(self, "current_screen") and self.current_screen:
+            try:
+                self.current_screen.Hide()
+                self.current_screen.Destroy()
+            except Exception:
+                pass
+            self.current_screen = None
+
+        if hasattr(self, "tasks_screen"):
+            try:
+                self.tasks_screen.Hide()
+                self.tasks_screen.Destroy()
+            except Exception:
+                pass
+
+    def show_screen(self, screen_class):
+        try:
+            self.title.Hide()
+        except Exception:
+            pass
+        for icon in getattr(self, "icons", []):
+            try:
+                icon.Hide()
+            except Exception:
+                pass
+
+        if self.current_screen:
+            self._destroy_current_screen()
+
+        try:
+            self.current_screen = screen_class(
+                parent=self,
+                nav_callback=self.on_sidebar_nav,
+                back_callback=self.switch_to_home
+            )
+        except TypeError:
+            self.current_screen = screen_class(self)
+            try:
+                setattr(self.current_screen, "nav_callback", self.on_sidebar_nav)
+                setattr(self.current_screen, "back_callback", self.switch_to_home)
+            except Exception:
+                pass
+
+        self.current_screen.SetPosition((0, 0))
+        self.current_screen.SetSize((DESIGN_W, DESIGN_H))
+        self.current_screen.Show()
+        self.Refresh()
+
+    # ---------------------------------------------------------
+    # Convenience named switches
+    # ---------------------------------------------------------
+    def switch_to_home(self):
+        self._destroy_current_screen()
+        try:
+            self.title.Show()
+        except Exception:
+            pass
+        for icon in getattr(self, "icons", []):
+            try:
+                icon.Show()
+            except Exception:
+                pass
+        self.Refresh()
+
+
+# ============================================================
+# ENTRY POINT
+# ============================================================
+if __name__ == "__main__":
+    app = wx.App(False)
+    frame = MainFrame()
+    app.MainLoop()

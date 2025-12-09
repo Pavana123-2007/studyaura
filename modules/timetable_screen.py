@@ -7,7 +7,7 @@ Usage:
     show_timetable(root)
 """
 
-import os
+'''import os
 import csv
 import uuid
 import tkinter as tk
@@ -397,3 +397,35 @@ def show_timetable(root):
 
 # Expose an API-friendly function name
 show_timetable.__doc__ = "Call show_timetable(root) to open the timetable screen."
+'''
+# modules/timetable_screen.py
+import wx
+from modules.neon_base_wx import NeonScreen
+
+class TimetablePanel(NeonScreen):
+    def __init__(self,parent, neon_color="#28F0E0"):
+        super().__init__(parent, neon_color=neon_color)
+        self._build()
+    def _build(self):
+        c = self.content
+        s = wx.BoxSizer(wx.VERTICAL)
+        header = wx.BoxSizer(wx.HORIZONTAL)
+        title = wx.StaticText(c, label="Timetable")
+        f = title.GetFont(); f.SetPointSize(18); f.SetWeight(wx.FONTWEIGHT_BOLD); title.SetFont(f); title.SetForegroundColour(wx.Colour(255,255,255))
+        header.Add(title, 0, wx.ALIGN_CENTER_VERTICAL)
+        header.AddStretchSpacer()
+        s.Add(header,0,wx.EXPAND|wx.BOTTOM,8)
+        # sample grid (6x5)
+        grid = wx.GridSizer(rows=6, cols=5, vgap=8, hgap=8)
+        for r in range(6):
+            for cidx in range(5):
+                cell = wx.Panel(c, size=(120,60)); cell.SetBackgroundColour(wx.Colour(10,14,18))
+                lbl = wx.StaticText(cell, label=f"{8+r}:00\n-")
+                lbl.SetForegroundColour(wx.Colour(200,230,240))
+                vs = wx.BoxSizer(wx.VERTICAL); vs.AddStretchSpacer(); vs.Add(lbl,0,wx.ALIGN_CENTER); vs.AddStretchSpacer(); cell.SetSizer(vs)
+                grid.Add(cell, 0, wx.EXPAND)
+        s.Add(grid,1,wx.EXPAND)
+        c.SetSizer(s)
+
+def show_timetable(parent):
+    return TimetablePanel(parent)
