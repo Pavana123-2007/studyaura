@@ -1,15 +1,2 @@
 title,date,start,end,color_index,completed
-Physics ,2025-12-08,17:00,22:00,1,False
-Physics,2025-12-09,17:00,22:00,1,False
-Python,2025-12-10,17:00,22:00,0,False
-Mechanical,2025-12-11,17:00,22:00,2,False
-Mechanical,2025-12-12,17:00,22:00,2,False
-Electrical,2025-12-13,17:00,22:00,3,False
-Maths,2025-12-14,17:00,22:00,0,False
-2 Lab expermients,2025-12-08,21:00,23:00,4,False
-2 Lab expermients,2025-12-10,21:00,23:00,4,False
-2 Lab expermients,2025-12-11,21:00,23:00,4,False
-1 Lab expermients,2025-12-12,21:00,23:00,4,False
-1 Lab expermients,2025-12-13,21:00,23:00,4,False
-2 Lab expermients,2025-12-09,21:00,23:00,4,False
-2 Lab expermients,2025-12-14,21:00,23:00,4,False
+Physics Lab,2025-12-15,14:00,15:00,1,False

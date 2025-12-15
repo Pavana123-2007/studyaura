@@ -558,12 +558,12 @@ class JourneyMapScreen(wx.Panel):
         title_font = wx.Font(22, wx.FONTFAMILY_SWISS, 0, wx.FONTWEIGHT_BOLD)
         dc.SetFont(title_font)
         dc.SetTextForeground(TEXT)
-        dc.DrawText("🗺️ Study Journey — Floating Islands", 24, 18)
+        dc.DrawText("🗺️ Study Journey — Floating Islands", 24, 45)
 
         sub_font = wx.Font(10, wx.FONTFAMILY_SWISS, 0, wx.FONTWEIGHT_NORMAL)
         dc.SetFont(sub_font)
         stats_str = f"Completed tasks: {self.stats['completed_tasks']}  •  Streak: {self.stats['streak']} days  •  Study hours: {int(self.stats['total_minutes']//60)}  •  XP: {self.xp}  •  Level: {self.level}"
-        dc.DrawText(stats_str, 24, 52)
+        dc.DrawText(stats_str, 24, 78)
 
         ox = -self.view_x
 
